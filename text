@@ -1,0 +1,11 @@
+stock-dashboard/
+├── node_modules/
+├── .env                  <-- NEW
+├── db.js                 <-- NEW
+├── package.json
+├── server.js             <-- UPDATED
+├── index.html
+├── models/
+│   └── User.js           <-- NEW
+└── routes/
+    └── auth.js           <-- NEW (Will be fully implemented in Step 2)

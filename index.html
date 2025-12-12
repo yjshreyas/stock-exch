@@ -1,0 +1,936 @@
+
+
+// index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Broker Client Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        /* === BASE STYLES (Will be replaced by your chosen design) === */
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1 { color: #007bff; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        
+        .auth-box { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        .auth-form input { padding: 8px; margin-bottom: 10px; width: 95%; border: 1px solid #ccc; display: block; }
+        .auth-form button { padding: 8px 15px; cursor: pointer; border-radius: 4px; border: none; font-weight: bold; width: 100%; margin-top: 10px; background-color: #007bff; color: white;}
+        .auth-toggle { cursor: pointer; color: #007bff; margin-top: 10px; display: inline-block; }
+        
+        .dashboard-content { display: flex; flex-wrap: wrap; gap: 30px; margin-top: 20px; }
+        .market-section { flex: 2; min-width: 600px; }
+        .portfolio-section { flex: 1; min-width: 350px; }
+        .stock-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+        .stock-card { border: 1px solid #ddd; padding: 20px; border-radius: 4px; background-color: #f9f9f9; cursor: pointer; }
+        .price-text { font-size: 1.8em; font-weight: bold; display: block; margin: 10px 0; }
+        .trading-controls { display: flex; gap: 8px; margin-top: 10px; align-items: center;}
+        .trading-controls input { width: 50px; text-align: center; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .trade-btn { flex-grow: 1; padding: 10px; border: none; border-radius: 4px; font-weight: bold;}
+        .buy-btn { background-color: #28a745; color: white; }
+        .sell-btn { background-color: #dc3545; color: white; }
+        .sub-btn { background-color: #ffc107; color: #333; width: 100%; margin-top: 12px; padding: 10px; border: none; border-radius: 4px; font-weight: bold;}
+        .up { color: #28a745; }
+        .down { color: #dc3545; }
+        .hidden { display: none !important; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f7f7f7; }
+        #chart-controls { margin-bottom: 20px; display: flex; gap: 20px; align-items: center; padding-top: 10px;}
+
+        @keyframes blink-up { 0% { background-color: rgba(40, 167, 69, 0.4); } 100% { background-color: transparent; } }
+        @keyframes blink-down { 0% { background-color: rgba(220, 53, 69, 0.4); } 100% { background-color: transparent; } }
+        .blink-up { animation: blink-up 0.5s ease-out; }
+        .blink-down { animation: blink-down 0.5s ease-out; }
+
+    </style>
+</head>
+<body onload="checkAuth()">
+    
+    <div id="alert-notification"></div>
+
+    <div class="container">
+        <h1>Stock Broker Client Dashboard</h1>
+        
+        <div id="auth-section" class="auth-box">
+            <div id="connection-status" style="padding: 10px; margin-bottom: 15px; border-radius: 4px; font-weight: bold; text-align: center; background-color: #6c757d; color: white;">Disconnected</div>
+            
+            <div id="login-form">
+                <h2>Login to Your Account</h2>
+                <form class="auth-form" onsubmit="loginUser(event)">
+                    <input type="email" id="login-email" placeholder="Email" required>
+                    <input type="password" id="login-password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                </form>
+                <div class="auth-toggle" onclick="toggleAuthForm('register')">Need an account? Register here.</div>
+            </div>
+            
+            <div id="register-form" class="hidden">
+                <h2>Create New Account</h2>
+                <form class="auth-form" onsubmit="registerUser(event)">
+                    <input type="email" id="register-email" placeholder="Email" required>
+                    <input type="password" id="register-password" placeholder="Password (min 6 chars)" required>
+                    <button type="submit" style="background-color: #28a745;">Register</button>
+                </form>
+                <div class="auth-toggle" onclick="toggleAuthForm('login')">Already have an account? Login.</div>
+            </div>
+        </div>
+        
+        <div id="dashboard-container" class="hidden">
+            
+             <div id="connection-status-dashboard" style="padding: 15px; margin-bottom: 25px; border-radius: 10px; font-weight: 700; text-align: center; color: white; background-color: #6c757d;">Authenticating...</div>
+
+            <h2 style="font-size: 1.5em; border: none; padding-bottom: 0;">Welcome, <span id="current-user-email"></span> | <span class="auth-toggle" onclick="logoutUser()">Logout</span></h2>
+            
+            
+            <div id="dashboard-summary-section" class="dashboard-content">
+                <div class="portfolio-section" style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+                    <h3>Portfolio Summary</h3>
+                    
+                    <div>
+                        <p>Cash: <span id="cash-balance" class="up">$--</span></p>
+                        <p>Holdings Value: <span id="portfolio-value">$--</span></p>
+                        <p>Total P&L: <span id="total-pl-value">$--</span></p> 
+                        <p>Total Equity: <span id="total-equity">$--</span></p>
+                        <p id="trade-message" style="margin-top: 15px; font-weight: bold;"></p>
+                    </div>
+                    
+                    <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 10px;">
+                        <h4>Risk Metrics</h4>
+                        <p>Market Index: $<span id="market-index" class="risk-value">--</span></p>
+                        <p>Portfolio Beta: <span id="portfolio-beta" class="risk-value">--</span></p>
+                        <p>Diversification: <span id="diversification-score" class="risk-value">--</span>%</p>
+                    </div>
+
+                    <h3>Current Holdings</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Qty</th>
+                                <th>Avg. Cost</th>
+                                <th>P&L</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolio-table-body">
+                            </tbody>
+                    </table>
+                    
+                    <div style="margin-top: 25px; padding: 15px; border: 1px dashed #ccc; border-radius: 8px;">
+                        <h4>Set Price Alert (Below)</h4>
+                        <select id="alert-ticker" style="padding: 5px; margin-right: 5px;"></select>
+                        <input type="number" id="alert-threshold" placeholder="Threshold Price" style="width: 100px; padding: 5px; margin-right: 5px;">
+                        <button onclick="sendAlert()" style="padding: 8px 15px; background-color: #007bff; color: white; font-weight: bold;">Set Alert</button>
+                        
+                        <h5 style="margin-top: 15px; margin-bottom: 5px;">Active Alerts:</h5>
+                        <ul id="active-alerts-list" style="padding-left: 20px; font-size: 0.9em; list-style-type: none;"></ul>
+                    </div>
+                </div>
+
+                <div class="market-section">
+                     <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+                        <h3>Market Overview & Trading</h3>
+                        <div id="stock-list" class="stock-list">
+                            </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="stock-detail-section" class="hidden" style="margin-top: 30px;">
+                <button onclick="renderPage('dashboard')" style="padding: 10px 15px; margin-bottom: 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    ← Back to Dashboard
+                </button>
+                
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 30px;">
+                    <h3><span id="detail-ticker-name">STOCK</span> Price Chart</h3>
+                    <div id="chart-controls">
+                        <label for="chart-timeframe">Timeframe:</label>
+                        <select id="chart-timeframe" onchange="initChart()">
+                            <option value="60s">Last 60 Seconds (Live)</option>
+                            <option value="24h">Last 24 Hours (Simulated)</option>
+                            <option value="30d">Last 30 Days (Simulated)</option>
+                        </select>
+                    </div>
+                    <div style="position: relative; height:350px; width:100%">
+                        <canvas id="livePriceChart"></canvas>
+                    </div>
+                </div>
+                
+                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                    <h3>Transaction History Log for <span id="history-ticker-name">STOCK</span></h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Time</th>
+                                <th style="width: 10%;">Action</th>
+                                <th style="width: 15%;">Ticker</th>
+                                <th style="width: 10%;">Quantity</th>
+                                <th style="width: 15%;">Price</th>
+                                <th style="width: 15%;">Trade Value</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-log-body-detail">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        const SUPPORTED_STOCKS = ['GOOG', 'TSLA', 'AMZN', 'META', 'NVDA'];
+        const LOCAL_STORAGE_KEY_TOKEN = 'authToken';
+        const BASE_URL = 'http://localhost:3000';
+        
+        const CHART_HISTORY_LENGTH_SECONDS = 60;
+        const CHART_HISTORY_LENGTH_HOURS = 24;
+        const CHART_HISTORY_LENGTH_DAYS = 30;
+        
+        let ws = null;
+        let currentUserEmail = null;
+        let subscribedTickers = new Set();
+        let lastPrices = {}; 
+        let currentPortfolio = {}; 
+        let currentCash = 0;
+        let activeAlerts = {}; 
+        let riskMetrics = {};
+        
+        let priceHistory = {}; 
+        let priceChart = null; 
+        let currentPage = 'login'; 
+        let currentTicker = ''; 
+        let fullTransactionLog = []; // Stores all trade messages
+
+        // Define DOM elements globally
+        const statusElement = document.getElementById('connection-status');
+        const statusElementDashboard = document.getElementById('connection-status-dashboard');
+        const authSection = document.getElementById('auth-section');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const dashboardContainer = document.getElementById('dashboard-container'); 
+        const dashboardSummarySection = document.getElementById('dashboard-summary-section'); 
+        const stockDetailSection = document.getElementById('stock-detail-section'); 
+        const stockListElement = document.getElementById('stock-list');
+        const portfolioTableBody = document.getElementById('portfolio-table-body'); 
+        const tradeMessageElement = document.getElementById('trade-message');
+        const chartTimeframeSelect = document.getElementById('chart-timeframe');
+        const alertTickerSelect = document.getElementById('alert-ticker');
+        const alertNotification = document.getElementById('alert-notification');
+        const activeAlertsList = document.getElementById('active-alerts-list');
+        const transactionLogBodyDetail = document.getElementById('transaction-log-body-detail'); 
+        const portfolioBetaElement = document.getElementById('portfolio-beta');
+        const diversificationScoreElement = document.getElementById('diversification-score');
+        const marketIndexElement = document.getElementById('market-index');
+        const detailTickerNameElement = document.getElementById('detail-ticker-name');
+        const historyTickerNameElement = document.getElementById('history-ticker-name');
+
+        // --- Utility Functions ---
+
+        // NEW FUNCTION: Handles page routing
+        function renderPage(page, ticker = null) {
+            currentPage = page;
+            authSection.classList.add('hidden');
+            dashboardContainer.classList.add('hidden');
+            dashboardSummarySection.classList.add('hidden');
+            stockDetailSection.classList.add('hidden');
+            
+            if (page === 'login') {
+                authSection.classList.remove('hidden');
+            } else if (page === 'dashboard') {
+                dashboardContainer.classList.remove('hidden');
+                dashboardSummarySection.classList.remove('hidden');
+            } else if (page === 'stock_detail' && ticker) {
+                currentTicker = ticker;
+                detailTickerNameElement.textContent = ticker;
+                historyTickerNameElement.textContent = ticker;
+                dashboardContainer.classList.remove('hidden');
+                stockDetailSection.classList.remove('hidden');
+                
+                // Reset timeframe to live when opening detail view
+                chartTimeframeSelect.value = '60s'; 
+                initChart();
+                renderTransactionLog();
+            }
+        }
+
+        function formatChange(value) {
+            const sign = value >= 0 ? '+' : '-';
+            const className = value >= 0 ? 'up' : 'down';
+            return `<span class="${className}">${sign}$${Math.abs(value).toFixed(2)}</span>`;
+        }
+        
+        // --- NEW: Function to handle clicking a stock card ---
+        function selectChart(ticker) {
+            renderPage('stock_detail', ticker);
+        }
+        // ---------------------------------------------------
+
+        function renderStockCard(ticker, price) {
+            const isSubscribed = subscribedTickers.has(ticker);
+            
+            return `
+                <div class="stock-card" id="card-${ticker}" onclick="selectChart('${ticker}')"> 
+                    <h4>${ticker} <span id="change-${ticker}"></span></h4>
+                    <span id="price-${ticker}" class="price-text">$${price.toFixed(2)}</span>
+                    
+                    <div class="trading-controls">
+                        <input type="number" id="qty-${ticker}" value="1" min="1">
+                        <button class="trade-btn buy-btn" onclick="event.stopPropagation(); sendTrade('${ticker}', 'BUY')">BUY</button>
+                        <button class="trade-btn sell-btn" onclick="event.stopPropagation(); sendTrade('${ticker}', 'SELL')">SELL</button>
+                    </div>
+                    <button class="${isSubscribed ? 'sub-btn sell-btn' : 'sub-btn'}" 
+                            id="btn-sub-${ticker}" 
+                            onclick="event.stopPropagation(); toggleSubscription('${ticker}')">
+                        ${isSubscribed ? 'LIVE (Unsubscribe)' : 'Subscribe (Enable Live)'}
+                    </button>
+                </div>
+            `;
+        }
+        
+        function renderDashboard(initialStocks) {
+            stockListElement.innerHTML = '';
+            SUPPORTED_STOCKS.forEach(ticker => {
+                stockListElement.innerHTML += renderStockCard(ticker, initialStocks[ticker]);
+            });
+            updatePrices(initialStocks); 
+        }
+
+        function simulateHistoricalData(initialStocks) {
+            const now = new Date();
+            priceHistory = {};
+            
+            SUPPORTED_STOCKS.forEach(ticker => {
+                priceHistory[ticker] = {
+                    '60s': { timestamps: [], prices: [] },
+                    '24h': { timestamps: [], prices: [] },
+                    '30d': { timestamps: [], prices: [] }
+                };
+
+                // --- 60s (Live) ---
+                const price60s = priceHistory[ticker]['60s'];
+                for (let i = 0; i < CHART_HISTORY_LENGTH_SECONDS; i++) {
+                    const time = new Date(now.getTime() - (CHART_HISTORY_LENGTH_SECONDS - 1 - i) * 1000).toLocaleTimeString();
+                    price60s.timestamps.push(time);
+                    
+                    const simulatedPrice = initialStocks[ticker] + (Math.random() - 0.5) * 5; 
+                    price60s.prices.push(Math.max(10, simulatedPrice));
+                }
+                
+                // --- 24h (Hourly) ---
+                const price24h = priceHistory[ticker]['24h'];
+                for (let i = 0; i <= CHART_HISTORY_LENGTH_HOURS; i++) {
+                    const time = new Date(now.getTime() - (CHART_HISTORY_LENGTH_HOURS - i) * 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    price24h.timestamps.push(time);
+                    const simulatedPrice = initialStocks[ticker] + (Math.random() - 0.5) * 15;
+                    price24h.prices.push(Math.max(10, simulatedPrice));
+                }
+
+                // --- 30d (Daily) ---
+                const price30d = priceHistory[ticker]['30d'];
+                for (let i = 0; i <= CHART_HISTORY_LENGTH_DAYS; i++) {
+                    const date = new Date(now.getTime() - (CHART_HISTORY_LENGTH_DAYS - i) * 24 * 3600000);
+                    price30d.timestamps.push(date.toLocaleDateString());
+                    const simulatedPrice = initialStocks[ticker] + (Math.random() - 0.5) * 20;
+                    price30d.prices.push(Math.max(10, simulatedPrice));
+                }
+            });
+        }
+
+
+        // --- Authentication Logic ---
+
+        function checkAuth() {
+            const token = localStorage.getItem(LOCAL_STORAGE_KEY_TOKEN);
+            if (token) {
+                renderPage('dashboard'); // Navigate directly to dashboard on valid token
+                document.getElementById('current-user-email').textContent = 'Authenticating...';
+                connectWebSocket(token);
+            } else {
+                renderPage('login'); // Show login form
+                toggleAuthForm('login');
+            }
+        }
+
+        function toggleAuthForm(formId) {
+            if (statusElement) statusElement.classList.remove('hidden'); 
+            if (statusElementDashboard) statusElementDashboard.classList.add('hidden');
+
+            loginForm.classList.toggle('hidden', formId !== 'login');
+            registerForm.classList.toggle('hidden', formId !== 'register');
+        }
+
+        async function registerUser(event) {
+            event.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            try {
+                const res = await fetch(`${BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    handleAuthSuccess(data.token, data.email);
+                } else {
+                    alert('Registration failed: ' + (data.msg || (data.errors && data.errors[0] ? data.errors[0].msg : 'Please check credentials.')));
+                }
+            } catch (err) {
+                console.error('Registration API error:', err);
+                alert('A server error occurred during registration.');
+            }
+        }
+        
+        async function loginUser(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const res = await fetch(`${BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    handleAuthSuccess(data.token, data.email);
+                } else {
+                    alert('Login failed: ' + (data.msg || 'Invalid credentials.'));
+                }
+            } catch (err) {
+                console.error('Login API error:', err);
+                alert('A server error occurred during login.');
+            }
+        }
+        
+        function handleAuthSuccess(token, email) {
+            localStorage.setItem(LOCAL_STORAGE_KEY_TOKEN, token);
+            currentUserEmail = email;
+            
+            renderPage('dashboard'); // Navigate to the Dashboard Summary
+            
+            connectWebSocket(token);
+        }
+
+        function logoutUser() {
+            localStorage.removeItem(LOCAL_STORAGE_KEY_TOKEN);
+            if (ws) ws.close();
+            window.location.reload(); 
+        }
+
+        // --- WebSocket Connection ---
+
+        function connectWebSocket(token) {
+            if (statusElementDashboard) {
+                statusElementDashboard.textContent = `Connecting...`;
+                statusElementDashboard.style.backgroundColor = '#ffc107'; 
+                statusElementDashboard.style.color = '#333';
+                statusElementDashboard.classList.remove('hidden');
+            }
+            
+            ws = new WebSocket(`${BASE_URL.replace('http', 'ws')}?token=${token}`);
+            
+            ws.onopen = () => {
+                if (statusElementDashboard) {
+                    statusElementDashboard.textContent = `Connected as ${currentUserEmail}`;
+                    statusElementDashboard.style.backgroundColor = '#28a745';
+                    statusElementDashboard.style.color = 'white';
+                }
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'INIT') {
+                    currentUserEmail = message.email; 
+                    document.getElementById('current-user-email').textContent = currentUserEmail;
+                    
+                    currentCash = parseFloat(message.cash);
+                    currentPortfolio = message.portfolio;
+                    lastPrices = message.stocks;
+                    subscribedTickers = new Set(message.subscriptions);
+                    activeAlerts = message.activeAlerts; 
+                    riskMetrics = message.riskMetrics; 
+                    
+                    simulateHistoricalData(message.stocks); 
+                    
+                    renderDashboard(message.stocks);
+                    updatePortfolioView();
+                    initAlertSelect(message.stocks); 
+                    renderActiveAlerts(); 
+                    
+                } else if (message.type === 'PRICE_UPDATE') {
+                    currentCash = parseFloat(message.cash);
+                    currentPortfolio = message.portfolio; 
+                    activeAlerts = message.activeAlerts; 
+                    riskMetrics = message.riskMetrics; 
+                    
+                    updatePrices(message.data);
+                    updatePriceHistory(message.data); 
+                    updatePortfolioView(); 
+                    renderActiveAlerts();
+                    
+                } else if (message.type === 'PORTFOLIO_UPDATE') {
+                    currentCash = parseFloat(message.cash);
+                    currentPortfolio = message.portfolio; 
+                    
+                    tradeMessageElement.textContent = message.tradeMsg;
+                    tradeMessageElement.className = message.tradeMsg.includes('failed') ? 'down' : 'up';
+                    
+                    handleTradeMessage(message.tradeMsg); 
+                    updatePortfolioView(); 
+                    
+                } else if (message.type === 'ALERT_SET_SUCCESS') {
+                    activeAlerts = message.activeAlerts;
+                    tradeMessageElement.textContent = message.tradeMsg;
+                    tradeMessageElement.className = 'up'; 
+                    renderActiveAlerts();
+                } else if (message.type === 'ALERT_TRIGGERED') {
+                    message.alerts.forEach(alert => {
+                        showNotification(`🔔 ALERT! ${alert.ticker} hit $${alert.price} (Threshold was $${alert.threshold})`);
+                    });
+                    activeAlerts = message.activeAlerts; 
+                    renderActiveAlerts();
+                } else if (message.type === 'ERROR') {
+                    if (statusElementDashboard) {
+                        statusElementDashboard.textContent = 'Authentication Error.';
+                        statusElementDashboard.style.backgroundColor = '#dc3545';
+                        statusElementDashboard.style.color = 'white';
+                    }
+                    alert(message.message);
+                    logoutUser(); 
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error("WS Error:", error);
+                 if (statusElementDashboard) {
+                    statusElementDashboard.textContent = 'Connection Error. Server Down?';
+                    statusElementDashboard.style.backgroundColor = '#dc3545';
+                    statusElementDashboard.style.color = 'white';
+                }
+            };
+
+            ws.onclose = () => {
+                if (statusElementDashboard) {
+                    statusElementDashboard.textContent = 'Disconnected';
+                    statusElementDashboard.style.backgroundColor = '#6c757d';
+                    statusElementDashboard.style.color = 'white';
+                }
+                ws = null;
+            };
+        }
+
+
+        // --- Transaction History Logic ---
+        function handleTradeMessage(message) {
+            // We only log successful trades for now
+            if (!message.includes("Successfully")) return; 
+            
+            const now = new Date().toLocaleTimeString();
+            
+            // Pattern: Successfully (bought|sold) (QUANTITY) shares of (TICKER) @ $(PRICE).
+            // Robust regex to capture the price, including decimals
+            const regex = /Successfully (bought|sold) (\d+) shares of ([A-Z]+) @ \$(\d+\.?\d*)\./; 
+            const match = message.match(regex);
+            
+            if (!match) return; 
+
+            // Extracting data from regex groups
+            const action = match[1].toUpperCase(); // BUY or SOLD
+            const quantity = parseInt(match[2]);
+            const ticker = match[3];
+            const price = parseFloat(match[4]);
+            
+            const status = 'SUCCESS';
+            const tradeValue = quantity * price;
+
+            // Store full trade log
+            fullTransactionLog.unshift({ time: now, action, ticker, quantity, price, tradeValue, status });
+
+            // If on the detail page and the trade matches the view, update the specific log
+            if (currentPage === 'stock_detail' && ticker === currentTicker) {
+                renderTransactionLog();
+            }
+        }
+        
+        // Renders the transaction log for the current stock
+        function renderTransactionLog() {
+            transactionLogBodyDetail.innerHTML = '';
+            
+            const filteredLog = fullTransactionLog.filter(log => log.ticker === currentTicker);
+            
+            filteredLog.forEach(log => {
+                const row = transactionLogBodyDetail.insertRow(); 
+                
+                row.insertCell().textContent = log.time;
+                row.insertCell().textContent = log.action;
+                row.insertCell().textContent = log.ticker;
+                row.insertCell().textContent = log.quantity.toFixed(0);
+                row.insertCell().textContent = `$${log.price.toFixed(2)}`;
+                
+                // Display Trade Value
+                const valueCell = row.insertCell();
+                valueCell.textContent = `$${log.tradeValue.toFixed(2)}`;
+                // Green for income (SELL), Red for cost (BUY)
+                valueCell.className = log.action === 'SELL' ? 'up' : 'down'; 
+
+                const statusCell = row.insertCell();
+                statusCell.textContent = log.status;
+                statusCell.className = log.status === 'SUCCESS' ? 'up' : 'down';
+            });
+        }
+
+
+        // --- Alerts Logic ---
+        
+        function sendAlert() {
+            const ticker = alertTickerSelect.value;
+            const thresholdInput = document.getElementById('alert-threshold');
+            const threshold = parseFloat(thresholdInput.value);
+
+            if (isNaN(threshold) || threshold <= 0) {
+                alert('Please enter a valid threshold price greater than zero.');
+                return;
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Connection not open. Please refresh and log in.');
+                return;
+            }
+            
+            ws.send(JSON.stringify({
+                type: 'SET_ALERT',
+                ticker: ticker,
+                threshold: threshold
+            }));
+            
+            thresholdInput.value = ''; 
+        }
+
+        function renderActiveAlerts() {
+            activeAlertsList.innerHTML = '';
+            const tickers = Object.keys(activeAlerts);
+            
+            if (tickers.length === 0) {
+                activeAlertsList.innerHTML = '<li>No active alerts.</li>';
+                return;
+            }
+
+            tickers.forEach(ticker => {
+                const threshold = activeAlerts[ticker];
+                const li = document.createElement('li');
+                li.innerHTML = `• ${ticker} below <span class="down">$${threshold.toFixed(2)}</span >`;
+                activeAlertsList.appendChild(li);
+            });
+        }
+        
+        function showNotification(message) {
+            alertNotification.textContent = message;
+            alertNotification.style.display = 'block';
+            
+            setTimeout(() => {
+                alertNotification.style.display = 'none';
+            }, 5000);
+        }
+
+
+        // --- Trading and Subscription Logic ---
+
+        function sendTrade(ticker, type) {
+            const quantityInput = document.getElementById(`qty-${ticker}`);
+            const quantity = parseInt(quantityInput.value);
+
+            if (isNaN(quantity) || quantity <= 0) {
+                alert('Please enter a valid quantity greater than zero.');
+                return;
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Connection not open. Please refresh and log in.');
+                return;
+            }
+            
+            ws.send(JSON.stringify({
+                type: type,
+                ticker: ticker,
+                quantity: quantity
+            }));
+            
+            quantityInput.value = '1'; 
+        }
+
+        function toggleSubscription(ticker) {
+            const isSubscribed = subscribedTickers.has(ticker);
+            const action = isSubscribed ? 'REMOVE' : 'ADD';
+
+            ws.send(JSON.stringify({
+                type: 'SUBSCRIBE',
+                action: action,
+                ticker: ticker
+            }));
+
+            if (action === 'ADD') {
+                subscribedTickers.add(ticker);
+            } else {
+                subscribedTickers.delete(ticker);
+            }
+            updateButtonState(ticker);
+        }
+
+        // --- Charting Logic ---
+
+        function updatePriceHistory(newPrices) {
+             const now = new Date().toLocaleTimeString();
+             SUPPORTED_STOCKS.forEach(ticker => {
+                 const newPrice = newPrices[ticker];
+                 const history = priceHistory[ticker]['60s'];
+
+                 if (history && newPrice) {
+                    history.prices.push(newPrice);
+                    history.timestamps.push(now);
+
+                    if (history.prices.length > CHART_HISTORY_LENGTH_SECONDS) {
+                        history.prices.shift();
+                        history.timestamps.shift();
+                    }
+                 }
+             });
+             // Only update the chart if the user is on the live detail view for the current ticker
+             if (currentPage === 'stock_detail' && chartTimeframeSelect.value === '60s') {
+                 updateChart();
+             }
+        }
+        
+        function getChartBounds(dataArray) {
+            if (dataArray.length === 0) return { min: 0, max: 0 };
+            const minVal = Math.min(...dataArray);
+            const maxVal = Math.max(...dataArray);
+            const buffer = (maxVal - minVal) * 0.05; 
+            
+            return {
+                min: Math.floor(minVal - buffer),
+                max: Math.ceil(maxVal + buffer)
+            };
+        }
+
+        // Only initializes the alert select. Chart select is no longer needed.
+        function initAlertSelect(initialStocks) {
+            alertTickerSelect.innerHTML = ''; 
+
+            SUPPORTED_STOCKS.forEach(ticker => {
+                const optionAlert = document.createElement('option');
+                optionAlert.value = ticker;
+                optionAlert.textContent = ticker;
+                alertTickerSelect.appendChild(optionAlert);
+            });
+        }
+        
+        function initChart() {
+            if (!document.getElementById('livePriceChart') || !currentTicker) return;
+
+            const ticker = currentTicker; // Use the currently selected ticker
+            const timeframe = chartTimeframeSelect.value || '60s';
+            const data = priceHistory[ticker][timeframe];
+            const isLive = timeframe === '60s';
+
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            if (!data || data.prices.length === 0) { return; }
+
+            const bounds = getChartBounds(data.prices);
+            const ctx = document.getElementById('livePriceChart').getContext('2d');
+            
+            let labelText = '';
+            let maxTicks = 10;
+            
+            if (timeframe === '60s') { 
+                labelText = 'Live Price (60 Seconds)'; 
+                maxTicks = 6;
+            } else if (timeframe === '24h') { 
+                labelText = 'Simulated Hourly Price (24h)';
+                maxTicks = 7;
+            } else if (timeframe === '30d') { 
+                labelText = 'Simulated Daily Price (30d)';
+                maxTicks = 6;
+            }
+
+
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.timestamps,
+                    datasets: [{
+                        label: `${ticker} ${labelText}`,
+                        borderColor: isLive ? '#007bff' : '#28a745', 
+                        borderWidth: 2,
+                        pointRadius: isLive ? 0 : 3, 
+                        fill: false,
+                        tension: isLive ? 0.4 : 0.2 
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, 
+                    scales: {
+                        x: {
+                            title: { display: true, text: timeframe === '60s' ? 'Time (Updates every 1s)' : 'Historical Periods' },
+                            grid: { display: false },
+                            ticks: {
+                                maxTicksLimit: maxTicks, 
+                                autoSkip: true
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: 'Price' },
+                            min: bounds.min, 
+                            max: bounds.max, 
+                            ticks: {
+                                callback: function(value) { return '$' + value.toFixed(2); }
+                            }
+                        }
+                    },
+                    animation: isLive ? false : true, 
+                    plugins: { legend: { display: true } }
+                }
+            });
+        }
+        
+        function updateChart() {
+            // Only update the chart if on the detail page and live timeframe is selected
+            if (!priceChart || currentPage !== 'stock_detail' || chartTimeframeSelect.value !== '60s') return;
+
+            const ticker = currentTicker;
+            const history = priceHistory[ticker]['60s']; 
+            
+            if (history && history.prices.length > 0) {
+                const bounds = getChartBounds(history.prices);
+
+                priceChart.options.scales.y.min = bounds.min;
+                priceChart.options.scales.y.max = bounds.max;
+                
+                priceChart.data.labels = history.timestamps;
+                priceChart.data.datasets[0].data = history.prices;
+                const currentPrice = lastPrices[ticker] ? lastPrices[ticker].toFixed(2) : '--';
+                priceChart.data.datasets[0].label = `${ticker} Live Price ($${currentPrice})`;
+                
+                priceChart.update('none'); 
+            }
+        }
+        
+        function updateButtonState(ticker) {
+            const button = document.getElementById(`btn-sub-${ticker}`);
+            if (!button) return;
+
+            const isSubscribed = subscribedTickers.has(ticker);
+            button.textContent = isSubscribed ? 'LIVE (Unsubscribe)' : 'Subscribe (Enable Live)';
+            button.style.backgroundColor = isSubscribed ? '#ffc107' : '#007bff';
+            button.style.color = isSubscribed ? '#333' : 'white';
+        }
+
+        function updatePrices(data) {
+            for (const [ticker, newPrice] of Object.entries(data)) {
+                const priceElement = document.getElementById(`price-${ticker}`);
+                const changeElement = document.getElementById(`change-${ticker}`);
+                
+                if (priceElement) { 
+                    const newPriceFloat = parseFloat(newPrice);
+                    const lastPriceFloat = lastPrices[ticker] || newPriceFloat;
+                    const priceChange = newPriceFloat - lastPriceFloat;
+
+                    priceElement.classList.remove('blink-up', 'blink-down');
+                    priceElement.classList.remove('up', 'down');
+                    
+                    if(subscribedTickers.has(ticker)) {
+                        if (priceChange > 0) {
+                            priceElement.classList.add('up', 'blink-up'); 
+                        } else if (priceChange < 0) {
+                            priceElement.classList.add('down', 'blink-down'); 
+                        }
+                        
+                        setTimeout(() => {
+                             priceElement.classList.remove('blink-up', 'blink-down');
+                        }, 500); 
+                    } else {
+                         if (priceChange > 0) {
+                            priceElement.classList.add('up'); 
+                        } else if (priceChange < 0) {
+                            priceElement.classList.add('down'); 
+                        }
+                    }
+
+                    priceElement.textContent = `$${newPriceFloat.toFixed(2)}`;
+                    changeElement.innerHTML = formatChange(priceChange);
+                    
+                    lastPrices[ticker] = newPriceFloat;
+                }
+                updateButtonState(ticker);
+            }
+        }
+
+        function updatePortfolioView() {
+            portfolioTableBody.innerHTML = '';
+            let totalMarketValue = 0;
+            let totalUnrealizedPL = 0;
+            
+            // --- Risk Metrics Update ---
+            portfolioBetaElement.textContent = riskMetrics.portfolioBeta || '--';
+            diversificationScoreElement.textContent = (riskMetrics.diversificationScore || '--') + '%';
+            marketIndexElement.textContent = `$${riskMetrics.marketIndex}` || '$--';
+
+
+            for (const ticker in currentPortfolio) {
+                const holding = currentPortfolio[ticker];
+                
+                if (holding.quantity > 0) {
+                    const currentPrice = lastPrices[ticker] || 0;
+                    const marketValue = holding.quantity * currentPrice;
+                    const totalCost = holding.quantity * holding.avgPrice;
+                    const unrealizedPL = marketValue - totalCost;
+                    
+                    totalMarketValue += marketValue;
+                    totalUnrealizedPL += unrealizedPL;
+
+                    const row = portfolioTableBody.insertRow();
+                    row.insertCell().textContent = ticker;
+                    row.insertCell().textContent = holding.quantity.toFixed(0);
+                    row.insertCell().textContent = `$${holding.avgPrice.toFixed(2)}`;
+                    
+                    const plCell = row.insertCell();
+                    plCell.innerHTML = formatChange(unrealizedPL);
+                }
+            }
+            
+            const totalEquity = currentCash + totalMarketValue;
+
+            // Update Summary boxes
+            document.getElementById('cash-balance').textContent = `$${currentCash.toFixed(2)}`;
+            document.getElementById('portfolio-value').textContent = `$${totalMarketValue.toFixed(2)}`;
+            
+            const totalPLDisplay = document.getElementById('total-pl-value');
+            totalPLDisplay.innerHTML = formatChange(totalUnrealizedPL);
+            totalPLDisplay.className = totalUnrealizedPL >= 0 ? 'up' : 'down';
+
+
+            document.getElementById('total-equity').textContent = `$${totalEquity.toFixed(2)}`;
+        }
+
+        function checkLocalStorage() {
+            checkAuth();
+        }
+
+    </script>
+</body>
+</html>
