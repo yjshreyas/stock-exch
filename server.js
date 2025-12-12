@@ -16,6 +16,7 @@ dotenv.config();
 connectDB(); // CRITICAL: Connect to MongoDB on startup
 
 // --- Configuration & Global Data ---
+// const PORT = 3000;
 const PORT = process.env.PORT || 3000;
 const __dirname = path.resolve();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -446,12 +447,8 @@ setInterval(broadcastPrices, 1000);
 
 
 // --- Server Start ---
-// server.listen(PORT, () => {
-//     console.log(`Server running on http://localhost:${PORT}`);
-//     console.log(`Authentication API endpoints ready.`);
-// });
-
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Authentication API endpoints ready.`);
 });
+
