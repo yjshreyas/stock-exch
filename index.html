@@ -551,12 +551,34 @@ tr:last-child td { border-bottom: none; }
     function simulateHistoricalData(initialStocks) {
         const now = new Date();
         priceHistory = {};
+        
         SUPPORTED_STOCKS.forEach(ticker => {
-            priceHistory[ticker] = { '60s': { t: [], p: [] }, '24h': { t: [], p: [] }, '30d': { t: [], p: [] } };
-            let p = initialStocks[ticker];
+            priceHistory[ticker] = { 
+                '60s': { t: [], p: [] }, 
+                '24h': { t: [], p: [] }, 
+                '30d': { t: [], p: [] } 
+            };
+
+            let currentPrice = initialStocks[ticker];
+
+            // --- 60s (Live) ---
             for(let i=0; i<60; i++) {
-                 priceHistory[ticker]['60s'].t.push(new Date(now- (60-i)*1000).toLocaleTimeString());
-                 priceHistory[ticker]['60s'].p.push(p + (Math.random()-0.5)*2);
+                 priceHistory[ticker]['60s'].t.push(new Date(now - (60-i)*1000).toLocaleTimeString());
+                 priceHistory[ticker]['60s'].p.push(currentPrice + (Math.random()-0.5)*2);
+            }
+
+            // --- 24h (Hourly) ---
+            for(let i=0; i<=24; i++) {
+                const timeLabel = new Date(now - (24-i)*3600000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                priceHistory[ticker]['24h'].t.push(timeLabel);
+                priceHistory[ticker]['24h'].p.push(currentPrice + (Math.random()-0.5)*10); 
+            }
+
+            // --- 30d (Daily) ---
+            for(let i=0; i<=30; i++) {
+                const dateLabel = new Date(now - (30-i)*24*3600000).toLocaleDateString();
+                priceHistory[ticker]['30d'].t.push(dateLabel);
+                priceHistory[ticker]['30d'].p.push(currentPrice + (Math.random()-0.5)*20);
             }
         });
     }
@@ -583,8 +605,11 @@ tr:last-child td { border-bottom: none; }
         const ctx = document.getElementById('livePriceChart').getContext('2d');
         if(priceChart) priceChart.destroy();
         
-        const data = priceHistory[currentTicker]['60s']; 
-        if(!data) return;
+        // ✅ FIX: Read the value from the dropdown
+        const tf = document.getElementById('chart-timeframe').value; 
+        const data = priceHistory[currentTicker][tf];
+        
+        if(!data || data.p.length === 0) return;
 
         priceChart = new Chart(ctx, {
             type: 'line',
@@ -597,7 +622,8 @@ tr:last-child td { border-bottom: none; }
                     backgroundColor: 'rgba(56, 189, 248, 0.1)',
                     borderWidth: 2,
                     fill: true,
-                    pointRadius: 0,
+                    // Show dots for Daily/Monthly views, hide for Live
+                    pointRadius: tf === '60s' ? 0 : 3, 
                     tension: 0.4
                 }]
             },
@@ -606,7 +632,16 @@ tr:last-child td { border-bottom: none; }
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { display: false },
+                    x: { 
+                        // Show X-axis labels for history views
+                        display: true, 
+                        grid: { display: false },
+                        ticks: { 
+                            maxTicksLimit: 6,
+                            color: '#94a3b8',
+                            font: { size: 10 }
+                        }
+                    },
                     y: { 
                         position: 'right',
                         grid: { color: 'rgba(255,255,255,0.05)' },
@@ -627,10 +662,26 @@ tr:last-child td { border-bottom: none; }
     }
 
     // --- Actions ---
-    function sendTrade(ticker, type) {
+   function sendTrade(ticker, type) {
         if(!ws) return;
+
+        // ✅ NEW: Block trade if not subscribed
+        if (!subscribedTickers.has(ticker)) {
+            alert(`You must SUBSCRIBE to ${ticker} before trading.`);
+            return;
+        }
+
         const qty = parseInt(document.getElementById(`qty-${ticker}`).value);
-        if(qty > 0) ws.send(JSON.stringify({ type, ticker, quantity: qty }));
+        
+        if (isNaN(qty) || qty <= 0) {
+            alert('Please enter a valid quantity.');
+            return;
+        }
+        
+        ws.send(JSON.stringify({ type, ticker, quantity: qty }));
+        
+        // Optional: Reset input back to 1
+        document.getElementById(`qty-${ticker}`).value = '1';
     }
 
     function toggleSubscription(ticker) {

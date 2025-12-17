@@ -371,24 +371,20 @@ const broadcastPrices = async () => {
     const newPrices = simulatePriceUpdate(); 
     
     for (const [userId, connection] of activeConnections.entries()) {
-        const { ws, subscribed } = connection;
-        const subscribedPrices = {};
-        let needsUpdate = false;
+        const { ws } = connection;
         
-        subscribed.forEach(ticker => {
-            if (newPrices[ticker]) {
-                subscribedPrices[ticker] = newPrices[ticker];
-                needsUpdate = true;
-            }
-        });
+        // ✅ FIX: Send ALL prices to everyone.
+        // This ensures charts work immediately for any stock they click on.
+        // The frontend will still only "flash" the rows for subscribed stocks.
+        const allPrices = newPrices;
         
-        if (ws.readyState === ws.OPEN && needsUpdate) {
+        if (ws.readyState === ws.OPEN) {
             const user = await User.findById(userId);
             if (user) {
                 const riskMetrics = calculateRiskMetrics(user.portfolio);
                 ws.send(JSON.stringify({
                     type: 'PRICE_UPDATE',
-                    data: subscribedPrices,
+                    data: allPrices, // Sending all data
                     cash: user.cash,
                     portfolio: formatPortfolioForClient(user.portfolio),
                     activeAlerts: user.alerts ? Object.fromEntries(user.alerts) : {},
@@ -398,7 +394,6 @@ const broadcastPrices = async () => {
         }
     }
 };
-
 setInterval(broadcastPrices, 1000);
 
 server.listen(PORT, () => {
