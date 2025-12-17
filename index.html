@@ -39,7 +39,7 @@ body {
 .header h1 { font-size: 1.6rem; font-weight: 600; margin: 0; background: linear-gradient(to right, var(--blue), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
 #connection-status { padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 500; background: var(--card); border: 1px solid var(--border); }
 
-/* ---------- Auth ---------- */
+/* ---------- Auth (Page 1) ---------- */
 .auth-card {
     max-width: 420px; margin: 80px auto; background: var(--card);
     border: 1px solid var(--border); border-radius: 16px; padding: 24px;
@@ -57,23 +57,26 @@ body {
 .auth-form button:hover { opacity: 0.9; }
 .auth-toggle { margin-top: 12px; text-align: center; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
 
-/* ---------- Dashboard Grid ---------- */
-.grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+/* ---------- Dashboard (Page 2) ---------- */
+.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
 .card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 16px; padding: 20px; backdrop-filter: blur(10px);
 }
 .card h3 { margin-top: 0; margin-bottom: 16px; font-size: 1.1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* ---------- Stock Cards ---------- */
-.stock-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 16px; }
+/* Stock Cards */
+.stock-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 16px; }
 .stock-card {
     background: rgba(0,0,0,0.2); border-radius: 14px; padding: 16px;
     border: 1px solid var(--border); transition: transform 0.2s; cursor: pointer;
+    position: relative;
 }
-.stock-card:hover { transform: translateY(-2px); border-color: var(--blue); }
+.stock-card:hover { transform: translateY(-4px); border-color: var(--blue); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
 .stock-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;}
-.price-text { font-size: 1.4rem; font-weight: 700; display: block; margin: 8px 0; }
+.price-text { font-size: 1.5rem; font-weight: 700; display: block; margin: 12px 0; }
+
 .trading-controls { display: flex; gap: 6px; margin-top: 12px; }
 .trading-controls input {
     width: 50px; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
@@ -85,23 +88,30 @@ body {
 .sub-btn { width: 100%; margin-top: 8px; padding: 8px; border-radius: 8px; border: none; background: var(--card); color: var(--muted); cursor: pointer; border: 1px solid var(--border); font-size: 0.8rem;}
 .sub-btn.active { background: var(--yellow); color: #000; border-color: var(--yellow); }
 
-/* ---------- Portfolio ---------- */
+/* Portfolio Sidebar */
 .stat { display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .stat:last-child { border-bottom: none; }
 .stat span:last-child { font-weight: 600; font-family: monospace; font-size: 1.1rem; }
 
-/* ---------- Tables ---------- */
+/* Tables */
 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
 th { text-align: left; color: var(--muted); font-weight: 500; padding: 12px 8px; border-bottom: 1px solid var(--border); }
 td { padding: 12px 8px; border-bottom: 1px solid var(--border); }
 tr:last-child td { border-bottom: none; }
 
-/* ---------- Chart & History ---------- */
-.chart-container { margin-top: 20px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-.chart-box { height: 350px; position: relative; width: 100%; }
-.scrollable-table { max-height: 350px; overflow-y: auto; }
+/* ---------- Detail View (Page 3) ---------- */
+.back-btn {
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;
+    margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px;
+}
+.back-btn:hover { background: rgba(255,255,255,0.1); }
 
-/* ---------- Alerts ---------- */
+.detail-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+.chart-box { height: 400px; position: relative; width: 100%; }
+.scrollable-table { max-height: 400px; overflow-y: auto; }
+
+/* Alerts */
 #alert-notification {
     position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
     background: var(--blue); color: #000; padding: 14px 24px;
@@ -109,7 +119,7 @@ tr:last-child td { border-bottom: none; }
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-/* ---------- Utils ---------- */
+/* Colors */
 .up { color: var(--green); }
 .down { color: var(--red); }
 .blink-up { animation: blink-up 0.5s ease-out; }
@@ -117,8 +127,8 @@ tr:last-child td { border-bottom: none; }
 @keyframes blink-up { 0% { background-color: rgba(34, 197, 94, 0.2); } 100% { background-color: transparent; } }
 @keyframes blink-down { 0% { background-color: rgba(239, 68, 68, 0.2); } 100% { background-color: transparent; } }
 
-@media(max-width: 1000px){
-    .grid, .chart-container { grid-template-columns: 1fr; }
+@media(max-width: 900px){
+    .dashboard-grid, .detail-layout { grid-template-columns: 1fr; }
     .market-section { order: 2; }
     .portfolio-section { order: 1; }
 }
@@ -139,7 +149,7 @@ tr:last-child td { border-bottom: none; }
         </div>
     </div>
 
-    <div id="auth-section" class="auth-card">
+    <div id="auth-view" class="auth-card">
         <div id="login-form">
             <h2>Sign In</h2>
             <form class="auth-form" onsubmit="loginUser(event)">
@@ -161,11 +171,11 @@ tr:last-child td { border-bottom: none; }
         </div>
     </div>
 
-    <div id="dashboard-section" class="hidden">
-
-        <div class="grid">
+    <div id="dashboard-view" class="hidden">
+        <div class="dashboard-grid">
+            
             <div class="card market-section">
-                <h3>Live Market</h3>
+                <h3>Live Market (Click card for details)</h3>
                 <div id="stock-list" class="stock-grid"></div>
             </div>
 
@@ -193,11 +203,17 @@ tr:last-child td { border-bottom: none; }
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="chart-container">
+    <div id="detail-view" class="hidden">
+        <button class="back-btn" onclick="navigateToDashboard()">
+            ← Back to Dashboard
+        </button>
+
+        <div class="detail-layout">
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h3><span id="detail-ticker-name">SELECT A STOCK</span> Chart</h3>
+                    <h3><span id="detail-ticker-name">STOCK</span> Chart</h3>
                     <select id="chart-timeframe" onchange="initChart()" style="background:var(--bg); color:white; border:1px solid var(--border); padding:4px; border-radius:4px;">
                         <option value="60s">Live (60s)</option>
                         <option value="24h">Daily (24h)</option>
@@ -228,8 +244,8 @@ tr:last-child td { border-bottom: none; }
                 </div>
             </div>
         </div>
-
     </div>
+
 </div>
 
 <script>
@@ -238,8 +254,6 @@ tr:last-child td { border-bottom: none; }
     const BASE_URL = 'https://stock-exch-production.up.railway.app'; // Production URL
 
     const CHART_HISTORY_LENGTH_SECONDS = 60;
-    const CHART_HISTORY_LENGTH_HOURS = 24;
-    const CHART_HISTORY_LENGTH_DAYS = 30;
     
     let ws = null;
     let currentUserEmail = null;
@@ -252,30 +266,52 @@ tr:last-child td { border-bottom: none; }
     
     let priceHistory = {}; 
     let priceChart = null; 
-    let currentTicker = 'GOOG'; // Default selection
+    let currentTicker = 'GOOG'; 
     let fullTransactionLog = [];
 
     // --- DOM Elements ---
     const statusElement = document.getElementById('connection-status');
-    const authSection = document.getElementById('auth-section');
-    const dashboardSection = document.getElementById('dashboard-section');
+    const authView = document.getElementById('auth-view');
+    const dashboardView = document.getElementById('dashboard-view');
+    const detailView = document.getElementById('detail-view');
     const logoutBtn = document.getElementById('logout-btn');
     
-    // --- Routing/View Logic ---
+    // --- Routing Logic ---
     function checkAuth() {
         const token = localStorage.getItem(LOCAL_STORAGE_KEY_TOKEN);
         if (token) {
-            authSection.classList.add('hidden');
-            dashboardSection.classList.remove('hidden');
+            authView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            detailView.classList.add('hidden');
             logoutBtn.classList.remove('hidden');
+            
             statusElement.textContent = 'Connecting...';
             statusElement.style.color = 'var(--yellow)';
             connectWebSocket(token);
         } else {
-            authSection.classList.remove('hidden');
-            dashboardSection.classList.add('hidden');
+            authView.classList.remove('hidden');
+            dashboardView.classList.add('hidden');
+            detailView.classList.add('hidden');
             logoutBtn.classList.add('hidden');
         }
+    }
+
+    function navigateToDashboard() {
+        dashboardView.classList.remove('hidden');
+        detailView.classList.add('hidden');
+    }
+
+    // THIS IS THE KEY FIX FOR YOUR ISSUE:
+    function navigateToDetail(ticker) {
+        currentTicker = ticker; // FORCE Update current ticker
+        document.getElementById('detail-ticker-name').textContent = ticker;
+        
+        dashboardView.classList.add('hidden');
+        detailView.classList.remove('hidden');
+
+        // Re-initialize chart and history for THIS specific stock
+        initChart();
+        renderTransactionLog();
     }
 
     function toggleAuthForm(formId) {
@@ -283,7 +319,7 @@ tr:last-child td { border-bottom: none; }
         document.getElementById('register-form').classList.toggle('hidden', formId !== 'register');
     }
 
-    // --- API Calls ---
+    // --- API Calls (Auth) ---
     async function registerUser(event) {
         event.preventDefault();
         const email = document.getElementById('register-email').value;
@@ -358,14 +394,10 @@ tr:last-child td { border-bottom: none; }
                 initAlertSelect(); 
                 renderActiveAlerts(); 
                 
-                // Init default chart
-                selectStock(currentTicker);
-
             } else if (message.type === 'PRICE_UPDATE') {
                 currentCash = parseFloat(message.cash);
                 currentPortfolio = message.portfolio; 
                 activeAlerts = message.activeAlerts; 
-                riskMetrics = message.riskMetrics; 
                 
                 updatePrices(message.data);
                 updatePriceHistory(message.data); 
@@ -410,7 +442,8 @@ tr:last-child td { border-bottom: none; }
             const div = document.createElement('div');
             div.className = 'stock-card';
             div.id = `card-${ticker}`;
-            div.onclick = () => selectStock(ticker);
+            // CLICKING THE CARD OPENS PAGE 3
+            div.onclick = () => navigateToDetail(ticker);
             div.innerHTML = `
                 <div class="stock-header">
                     <span style="font-weight:700; color:var(--muted)">${ticker}</span>
@@ -431,24 +464,6 @@ tr:last-child td { border-bottom: none; }
         });
     }
 
-    function selectStock(ticker) {
-        currentTicker = ticker;
-        document.getElementById('detail-ticker-name').textContent = ticker;
-        
-        // Highlight selected card
-        document.querySelectorAll('.stock-card').forEach(c => c.style.borderColor = 'var(--border)');
-        const card = document.getElementById(`card-${ticker}`);
-        if(card) card.style.borderColor = 'var(--blue)';
-
-        // Scroll chart into view on mobile
-        if(window.innerWidth < 900) {
-            document.querySelector('.chart-container').scrollIntoView({behavior: 'smooth'});
-        }
-
-        initChart();
-        renderTransactionLog();
-    }
-
     function updatePrices(data) {
         for (const [ticker, newPrice] of Object.entries(data)) {
             const priceEl = document.getElementById(`price-${ticker}`);
@@ -464,10 +479,9 @@ tr:last-child td { border-bottom: none; }
                     ? `<span class="up">+${change.toFixed(2)}</span>` 
                     : `<span class="down">${change.toFixed(2)}</span>`;
 
-                // Flash effect
                 if(subscribedTickers.has(ticker)) {
                     priceEl.classList.remove('blink-up', 'blink-down');
-                    void priceEl.offsetWidth; // Trigger reflow
+                    void priceEl.offsetWidth; 
                     priceEl.classList.add(change >= 0 ? 'blink-up' : 'blink-down');
                 }
                 
@@ -539,7 +553,6 @@ tr:last-child td { border-bottom: none; }
         priceHistory = {};
         SUPPORTED_STOCKS.forEach(ticker => {
             priceHistory[ticker] = { '60s': { t: [], p: [] }, '24h': { t: [], p: [] }, '30d': { t: [], p: [] } };
-            // Populate dummy data logic remains same as before...
             let p = initialStocks[ticker];
             for(let i=0; i<60; i++) {
                  priceHistory[ticker]['60s'].t.push(new Date(now- (60-i)*1000).toLocaleTimeString());
@@ -560,14 +573,17 @@ tr:last-child td { border-bottom: none; }
                 }
             }
         });
-        if(document.getElementById('chart-timeframe').value === '60s') updateChart();
+        // Only update if Detail view is visible
+        if(!document.getElementById('detail-view').classList.contains('hidden')) {
+             if(document.getElementById('chart-timeframe').value === '60s') updateChart();
+        }
     }
 
     function initChart() {
         const ctx = document.getElementById('livePriceChart').getContext('2d');
         if(priceChart) priceChart.destroy();
         
-        const data = priceHistory[currentTicker]['60s']; // Defaulting to 60s for simplicity in this view
+        const data = priceHistory[currentTicker]['60s']; 
         if(!data) return;
 
         priceChart = new Chart(ctx, {
